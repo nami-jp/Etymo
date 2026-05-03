@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Etymo 設定</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div class="container">
+      <!-- ヘッダー -->
+      <header class="header">
+        <h1 class="logo">Etymo</h1>
+        <p class="tagline">語源・文法・意味をAIが解説</p>
+      </header>
+
+      <!-- 設定フォーム -->
+      <main class="form">
+        <!-- AIプロバイダー選択 -->
+        <div class="field">
+          <label class="label" for="provider">AIプロバイダー</label>
+          <select class="select" id="provider">
+            <option value="gemini">Google Gemini（推奨・無料枠あり）</option>
+            <option value="claude">Anthropic Claude</option>
+            <option value="openai">OpenAI</option>
+          </select>
+        </div>
+
+        <!-- APIキー入力 -->
+        <div class="field">
+          <label class="label" for="apiKey">APIキー</label>
+          <div class="input-wrapper">
+            <input
+              class="input"
+              type="password"
+              id="apiKey"
+              placeholder="APIキーを入力してください"
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <!-- 表示/非表示切り替えボタン -->
+            <button class="toggle-btn" id="toggleKey" type="button" aria-label="APIキーの表示切り替え">
+              👁
+            </button>
+          </div>
+          <!-- プロバイダーごとのヒント -->
+          <p class="hint" id="apiKeyHint"></p>
+        </div>
+
+        <!-- 解説言語選択 -->
+        <div class="field">
+          <label class="label" for="language">解説言語</label>
+          <select class="select" id="language">
+            <option value="ja">日本語</option>
+            <option value="en">English</option>
+          </select>
+        </div>
+
+        <!-- 保存ボタン -->
+        <button class="save-btn" id="saveBtn" type="button">設定を保存</button>
+
+        <!-- フィードバックメッセージ -->
+        <p class="feedback" id="feedback" aria-live="polite"></p>
+      </main>
+
+      <!-- フッター -->
+      <footer class="footer">
+        <p>Webページでテキストを選択すると<br />「Etymo」ボタンが表示されます</p>
+      </footer>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

@@ -1,0 +1,26 @@
+# Claude Code
+.claude/
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# 開発メモ・設計ドキュメント（README以外）
+*.md
+!README.md
+
+# Xcode ビルド成果物
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+
+# Xcode 自動生成
+*.xcscmblueprint
+*.xccheckout
+
+# Swift Package Manager
+.build/
+.swiftpm/

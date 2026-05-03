@@ -1,0 +1,233 @@
+/* content.css - Etymo ポップアップのスタイル
+ *
+ * ページのスタイルに影響されないよう、セレクタに "etymo-" プレフィックスをつける
+ * z-index は高い値を設定し、他の要素の上に表示する
+ */
+
+/* ========== トリガーボタン ========== */
+#etymo-trigger {
+  position: absolute;
+  z-index: 2147483646; /* Chromeの最大値に近い値 */
+  transform: translateX(-50%); /* 選択範囲の中央に配置 */
+
+  background: #4f46e5; /* インディゴ */
+  color: #ffffff;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  padding: 4px 10px;
+  border-radius: 12px;
+  cursor: pointer;
+  user-select: none;
+
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.4);
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+#etymo-trigger:hover {
+  background: #4338ca;
+  transform: translateX(-50%) translateY(-1px);
+}
+
+#etymo-trigger:active {
+  transform: translateX(-50%) translateY(0px);
+}
+
+/* ========== 解説ポップアップ ========== */
+#etymo-popup {
+  position: absolute;
+  z-index: 2147483647; /* Chromeの最大値 */
+  width: 340px;
+  max-height: 420px;
+  overflow-y: auto;
+
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15), 0 2px 8px rgba(0, 0, 0, 0.08);
+
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans",
+    "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #1f2937;
+
+  /* スクロールバーを細く */
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db transparent;
+}
+
+#etymo-popup::-webkit-scrollbar {
+  width: 4px;
+}
+
+#etymo-popup::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#etymo-popup::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 2px;
+}
+
+/* ========== ポップアップ内部レイアウト ========== */
+
+/* ヘッダー（タイトル + 閉じるボタン） */
+.etymo-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px 8px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.etymo-popup-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #4f46e5;
+  letter-spacing: 0.05em;
+}
+
+.etymo-close-btn {
+  background: none;
+  border: none;
+  color: #9ca3af;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  line-height: 1;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.etymo-close-btn:hover {
+  color: #4b5563;
+  background: #f3f4f6;
+}
+
+/* 選択テキスト表示 */
+.etymo-selected-text {
+  padding: 6px 14px 8px;
+  font-size: 12px;
+  color: #6b7280;
+  font-style: italic;
+  border-bottom: 1px solid #f3f4f6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.etymo-selected-text::before {
+  content: "「";
+}
+
+.etymo-selected-text::after {
+  content: "」";
+}
+
+/* コンテンツエリア */
+.etymo-content {
+  padding: 12px 14px 14px;
+}
+
+/* ========== ローディングアニメーション ========== */
+.etymo-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 16px 0;
+}
+
+.etymo-loading span {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  background: #4f46e5;
+  border-radius: 50%;
+  animation: etymo-bounce 1.2s ease-in-out infinite;
+}
+
+.etymo-loading span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.etymo-loading span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes etymo-bounce {
+  0%, 80%, 100% {
+    transform: scale(0.6);
+    opacity: 0.4;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* ========== 解説結果 ========== */
+.etymo-result {
+  font-size: 13px;
+  line-height: 1.7;
+  color: #1f2937;
+}
+
+.etymo-result p {
+  margin: 0 0 8px;
+}
+
+.etymo-result p:last-child {
+  margin-bottom: 0;
+}
+
+.etymo-result h2,
+.etymo-result h3 {
+  font-size: 13px;
+  font-weight: 700;
+  color: #111827;
+  margin: 10px 0 4px;
+}
+
+.etymo-result h2:first-child,
+.etymo-result h3:first-child {
+  margin-top: 0;
+}
+
+.etymo-result strong {
+  font-weight: 700;
+  color: #111827;
+}
+
+.etymo-result em {
+  font-style: italic;
+  color: #4b5563;
+}
+
+.etymo-result ul {
+  margin: 4px 0 8px;
+  padding-left: 16px;
+}
+
+.etymo-result li {
+  margin-bottom: 3px;
+}
+
+.etymo-result br {
+  display: block;
+  content: "";
+  margin-top: 4px;
+}
+
+/* ========== エラー表示 ========== */
+.etymo-error {
+  font-size: 12px;
+  color: #dc2626;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  padding: 10px 12px;
+  line-height: 1.5;
+}
