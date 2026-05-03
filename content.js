@@ -16,6 +16,22 @@ let popup = null;           // 解説ポップアップ要素
 let selectedText = "";      // 現在選択中のテキスト
 let selectionRect = null;   // 選択範囲の座標情報
 
+// ========== サイドバー状態管理 ==========
+let sidebarContainer = null; // コンテナ div（ハンドル + iframe）
+let sidebarFrame = null;     // サイドバー iframe
+let sidebarTab = null;       // 折りたたみタブ
+let sidebarLoaded = false;   // iframe ロード完了フラグ
+let pendingText = null;      // ロード前に受け取ったテキスト
+let sidebarWidth = 320;      // 現在のパネル幅
+let isCollapsed = false;     // 折りたたみ中フラグ
+let isPinned = false;        // ピン留めフラグ
+let collapseTimer = null;    // 折りたたみ遅延タイマー
+let mouseHasEnteredSidebar = false; // 開いてからマウスがサイドバーに入ったかフラグ
+
+const SIDEBAR_MIN_WIDTH = 280;
+const SIDEBAR_MAX_WIDTH_RATIO = 0.6;
+const COLLAPSE_DELAY = 400; // マウス離脱から折りたたみまでの遅延(ms)
+
 // ========== テキスト選択の検知 ==========
 
 /**
@@ -97,7 +113,7 @@ function hideTriggerButton() {
 function onTriggerClick(e) {
   e.stopPropagation();
   hideTriggerButton();
-  showPopup(selectedText);
+  showSidebar(selectedText);
 }
 
 // ========== 解説ポップアップ ==========
@@ -230,6 +246,188 @@ function showError(container, message) {
   container.appendChild(errorDiv);
 }
 
+// ========== サイドバー ==========
+
+// background.js から SHOW_SIDEBAR メッセージを受け取る
+chrome.runtime.onMessage.addListener((request) => {
+  if (request.type === "SHOW_SIDEBAR") {
+    showSidebar(request.text);
+  }
+});
+
+function loadSidebarSettings() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(["sidebarWidth", "sidebarPinned"], (result) => {
+      resolve({
+        width: result.sidebarWidth || 320,
+        pinned: result.sidebarPinned || false,
+      });
+    });
+  });
+}
+
+async function injectSidebarFrame() {
+  const settings = await loadSidebarSettings();
+  sidebarWidth = settings.width;
+  isPinned = settings.pinned;
+
+  // コンテナ（ハンドル + iframe をまとめてスライドさせる）
+  sidebarContainer = document.createElement("div");
+  sidebarContainer.id = "etymo-sidebar-container";
+
+  // リサイズハンドル
+  const handle = document.createElement("div");
+  handle.id = "etymo-resize-handle";
+  handle.addEventListener("mousedown", onResizeStart);
+
+  // iframe
+  sidebarFrame = document.createElement("iframe");
+  sidebarFrame.id = "etymo-sidebar-frame";
+  sidebarFrame.src = chrome.runtime.getURL("sidebar/sidebar.html");
+  sidebarFrame.style.width = `${sidebarWidth}px`;
+
+  sidebarFrame.addEventListener("load", () => {
+    sidebarLoaded = true;
+    sidebarFrame.contentWindow.postMessage({ type: "SIDEBAR_INIT_PIN", pinned: isPinned }, "*");
+    if (pendingText !== null) {
+      sidebarFrame.contentWindow.postMessage({ type: "SET_TEXT", text: pendingText }, "*");
+      pendingText = null;
+    }
+  });
+
+  // マウスがコンテナに入ったら：フラグを立て、折りたたみをキャンセル
+  sidebarContainer.addEventListener("mouseenter", () => {
+    mouseHasEnteredSidebar = true;
+    clearTimeout(collapseTimer);
+    collapseTimer = null;
+  });
+
+  sidebarContainer.appendChild(handle);
+  sidebarContainer.appendChild(sidebarFrame);
+  document.body.appendChild(sidebarContainer);
+
+  // 折りたたみタブ（右端に固定表示、collapsed 時だけ見える）
+  sidebarTab = document.createElement("div");
+  sidebarTab.id = "etymo-sidebar-tab";
+  sidebarTab.textContent = "E";
+  sidebarTab.addEventListener("click", expandSidebar);
+  document.body.appendChild(sidebarTab);
+
+  // マウスがページ側に移動したら折りたたみをスケジュール（一度入ってから離れた場合のみ）
+  document.addEventListener("mousemove", (e) => {
+    if (isCollapsed || !sidebarContainer.classList.contains("etymo-sidebar-visible")) return;
+    if (!mouseHasEnteredSidebar) return;
+    if (isPinned) return;
+    const rect = sidebarContainer.getBoundingClientRect();
+    if (e.clientX < rect.left) {
+      if (!collapseTimer) {
+        collapseTimer = setTimeout(() => {
+          collapseSidebar();
+          collapseTimer = null;
+        }, COLLAPSE_DELAY);
+      }
+    } else {
+      clearTimeout(collapseTimer);
+      collapseTimer = null;
+    }
+  });
+
+  // sidebar.js からのメッセージを受け取る
+  window.addEventListener("message", (e) => {
+    if (!sidebarFrame || e.source !== sidebarFrame.contentWindow) return;
+
+    if (e.data.type === "SIDEBAR_CLOSE") {
+      hideSidebar();
+    } else if (e.data.type === "SIDEBAR_PIN") {
+      isPinned = e.data.pinned;
+      chrome.storage.local.set({ sidebarPinned: isPinned });
+    } else if (e.data.type === "SIDEBAR_ANALYZE") {
+      chrome.runtime.sendMessage(
+        { type: "EXPLAIN_SIDEBAR", text: e.data.text, mode: e.data.mode },
+        (response) => {
+          if (!sidebarFrame) return;
+          if (chrome.runtime.lastError) {
+            sidebarFrame.contentWindow.postMessage({
+              type: "ANALYZE_RESULT",
+              success: false,
+              error: "拡張機能との通信に失敗しました。ページを再読み込みしてください。"
+            }, "*");
+            return;
+          }
+          sidebarFrame.contentWindow.postMessage(
+            { type: "ANALYZE_RESULT", ...response },
+            "*"
+          );
+        }
+      );
+    }
+  });
+}
+
+function onResizeStart(e) {
+  e.preventDefault();
+  const startX = e.clientX;
+  const startWidth = sidebarWidth;
+
+  // ドラッグ中は iframe のマウスイベントを無効化（マウスが吸われるのを防ぐ）
+  sidebarFrame.style.pointerEvents = "none";
+
+  function onMouseMove(e) {
+    const maxWidth = Math.floor(window.innerWidth * SIDEBAR_MAX_WIDTH_RATIO);
+    const newWidth = Math.min(maxWidth, Math.max(SIDEBAR_MIN_WIDTH, startWidth + (startX - e.clientX)));
+    sidebarWidth = newWidth;
+    sidebarFrame.style.width = `${newWidth}px`;
+  }
+
+  function onMouseUp() {
+    sidebarFrame.style.pointerEvents = "";
+    document.removeEventListener("mousemove", onMouseMove);
+    document.removeEventListener("mouseup", onMouseUp);
+    chrome.storage.local.set({ sidebarWidth });
+  }
+
+  document.addEventListener("mousemove", onMouseMove);
+  document.addEventListener("mouseup", onMouseUp);
+}
+
+async function showSidebar(text) {
+  if (!sidebarContainer) {
+    await injectSidebarFrame();
+  }
+  expandSidebar();
+
+  if (sidebarLoaded) {
+    sidebarFrame.contentWindow.postMessage({ type: "SET_TEXT", text }, "*");
+  } else {
+    pendingText = text;
+  }
+}
+
+function collapseSidebar() {
+  if (!sidebarContainer) return;
+  sidebarContainer.classList.remove("etymo-sidebar-visible");
+  sidebarTab.classList.add("etymo-sidebar-tab-visible");
+  isCollapsed = true;
+}
+
+function expandSidebar() {
+  if (!sidebarContainer) return;
+  mouseHasEnteredSidebar = false;
+  sidebarContainer.classList.add("etymo-sidebar-visible");
+  sidebarTab.classList.remove("etymo-sidebar-tab-visible");
+  isCollapsed = false;
+}
+
+function hideSidebar() {
+  if (sidebarContainer) {
+    sidebarContainer.classList.remove("etymo-sidebar-visible");
+  }
+  if (sidebarTab) {
+    sidebarTab.classList.remove("etymo-sidebar-tab-visible");
+  }
+  isCollapsed = false;
+}
+
 // ========== 簡易マークダウンパーサー ==========
 
 /**
@@ -251,12 +449,12 @@ function parseMarkdown(text) {
     .replace(/^# (.+)$/gm, "<h2>$1</h2>")
     // **太字**
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    // - リスト項目（*斜体*より先に変換して * の混同を防ぐ）
+    .replace(/^[-*]\s+(.+)$/gm, "<li>$1</li>")
     // *斜体*
     .replace(/\*(.+?)\*/g, "<em>$1</em>")
-    // - リスト項目
-    .replace(/^[-*] (.+)$/gm, "<li>$1</li>")
     // li を ul でラップ（連続するli）
-    .replace(/(<li>.*<\/li>(\n|$))+/g, (match) => `<ul>${match}</ul>`)
+    .replace(/(<li>.*<\/li>(\n|$))+/g, (match) => `<ul>${match.replace(/\n/g, "")}</ul>`)
     // 空行を段落区切りに
     .replace(/\n\n/g, "</p><p>")
     // 残りの改行をbrに

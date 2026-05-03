@@ -6,7 +6,15 @@
 
   "permissions": [
     "storage",
-    "activeTab"
+    "activeTab",
+    "contextMenus"
+  ],
+
+  "web_accessible_resources": [
+    {
+      "resources": ["sidebar/sidebar.html", "sidebar/sidebar.js", "sidebar/sidebar.css"],
+      "matches": ["<all_urls>"]
+    }
   ],
 
   "host_permissions": [

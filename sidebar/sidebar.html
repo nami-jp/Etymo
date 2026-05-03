@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="sidebar.css">
+</head>
+<body>
+  <div id="sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-title">Etymo</span>
+      <div class="header-actions">
+        <button id="pin-btn" aria-label="ピン留め">📌</button>
+        <button id="close-btn" aria-label="閉じる">✕</button>
+      </div>
+    </div>
+    <div id="selected-text" class="selected-text"></div>
+    <div class="mode-buttons">
+      <button class="mode-btn" data-mode="etymology">単語解説</button>
+      <button class="mode-btn" data-mode="translate">翻訳</button>
+      <button class="mode-btn" data-mode="grammar">品詞解析</button>
+    </div>
+    <div id="content" class="content">
+      <div class="placeholder">テキストを選択して右クリック →<br>「Etymoに送る」</div>
+    </div>
+  </div>
+  <script src="sidebar.js"></script>
+</body>
+</html>
